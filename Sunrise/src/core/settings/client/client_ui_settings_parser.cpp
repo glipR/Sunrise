@@ -1,6 +1,7 @@
 #include <Windows.h>
 
 #include <array>
+#include <cstdint>
 
 #include "../parser.h"
 
@@ -64,6 +65,7 @@ bool Parser::client_ui_settings(ui::runtime::Settings& output) noexcept {
     ui::runtime::Settings candidate = output;
     bool hasEnabled = false;
     bool hasToggleKey = false;
+    bool hasMissionVariableRows = false;
     if (consume('}')) {
         return true;
     }
@@ -84,6 +86,14 @@ bool Parser::client_ui_settings(ui::runtime::Settings& output) noexcept {
                 return false;
             }
             hasToggleKey = true;
+        } else if (key == "mission_variable_rows") {
+            std::uint64_t value = 0;
+            if (hasMissionVariableRows || !unsigned_integer(value) || value == 0
+                || value > ui::runtime::kMissionVariableRowsMaximum) {
+                return false;
+            }
+            candidate.missionVariableRows = static_cast<std::uint32_t>(value);
+            hasMissionVariableRows = true;
         } else if (!skip_value(0)) {
             return false;
         }
