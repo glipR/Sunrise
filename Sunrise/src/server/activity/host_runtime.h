@@ -1290,6 +1290,12 @@ void read_mission_inputs_after(MissionInputCursor after, MissionInputRead& outpu
 [[nodiscard]] bool auth_state(const state::activity::SessionBinding& binding,
                               AuthState& output) noexcept;
 
+/**
+ * @return True while an incident for the exact instance is queued or occupies its output slot.
+ * Scriptable reservations are refused for that window, so script dispatch waits it out.
+ */
+[[nodiscard]] bool incident_in_flight(const state::activity::SessionBinding& binding) noexcept;
+
 /** Reads the one pending incident occupying the exact instance's serialized output slot. */
 [[nodiscard]] bool pending_incident(const state::activity::SessionBinding& binding,
                                     PendingIncident& output) noexcept;
