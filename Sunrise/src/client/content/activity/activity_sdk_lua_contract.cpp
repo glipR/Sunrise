@@ -51,6 +51,7 @@ bool render_contract_files(const Source& source, Bundle& output) noexcept {
                  {"actor_sequence_bindings", number(source.actorSequenceBindings.size())},
                  {"authored_scene_event_keys", number(source.authoredSceneEventKeys.size())},
                  {"dialogue_cues", number(source.dialogueCues.size())},
+                 {"incident_definitions", number(source.incidentDefinitions.size())},
              })},
         });
         if (!render_json(manifest, 0, output.manifestJson)) {
@@ -486,12 +487,13 @@ sdk.ObjectFilterPredicateSchema = {
             output.behaviorModule.append(line.data(), static_cast<std::size_t>(written));
         }
         output.behaviorModule.append("}\n\nreturn behavior\n");
-        return true;
+        return render_incident_module(source, output.incidentModule);
     } catch (...) {
         output.manifestJson.clear();
         output.missionApiJson.clear();
         output.activitySdkModule.clear();
         output.behaviorModule.clear();
+        output.incidentModule.clear();
         return false;
     }
 }
