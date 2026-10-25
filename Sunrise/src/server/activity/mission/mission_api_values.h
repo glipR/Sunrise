@@ -200,9 +200,32 @@ inline constexpr ValueSpec kAbilityTargetArgument{.name = "target",
                                                   .kind = ValueKind::handle,
                                                   .ref = "slot",
                                                   .optional = true,
-                                                  .note = "must have authored point parameter 0"};
-inline constexpr ValueSpec kAtomAbilityFields[]{
-    kAtomKindField, kAbilityArgument, kAbilityTargetArgument, kAtomQuantizedField};
+                                                  .note =
+                                                      "a type-58 point or type-48 point set the "
+                                                      "SDK proved; value picks its point"};
+// The ability lane carries its point parameter as a signed byte; -1 is "no target".
+inline constexpr ValueSpec kAbilityPointArgument{.name = "value",
+                                                 .kind = ValueKind::integer,
+                                                 .optional = true,
+                                                 .fallback = default_integer(0),
+                                                 .bound = between(0, 127),
+                                                 .scope = Scope::argument,
+                                                 .note = "authored point parameter of target"};
+// The client hands this signed 3-bit lane to the ability request unchanged (A97800 in the current
+// build); -1 is what every shipped atom so far has sent. Its meaning is still being mapped.
+inline constexpr ValueSpec kAbilityModeArgument{.name = "mode",
+                                                .kind = ValueKind::integer,
+                                                .optional = true,
+                                                .fallback = default_integer(-1),
+                                                .bound = between(-1, 6),
+                                                .scope = Scope::argument,
+                                                .note = "ability request mode; -1 by default"};
+inline constexpr ValueSpec kAtomAbilityFields[]{kAtomKindField,
+                                                kAbilityArgument,
+                                                kAbilityTargetArgument,
+                                                kAbilityPointArgument,
+                                                kAbilityModeArgument,
+                                                kAtomQuantizedField};
 
 /** The ten primary lane schemas the client-atom runner selects between, in native order. */
 inline constexpr std::array<AtomKindSpec, 10> kAtomKinds{{
