@@ -69,6 +69,9 @@ int g_eventState{};
 float g_eventLeaveSeconds{5.0F};
 std::array<char, 17> g_eventPlayerKey{"0000000000000000"};
 int g_occupancyValue{};
+/** Combatant `.5` actor flags: six-bit value and mask. */
+int g_combatantFlagValue{0x20};
+int g_combatantFlagMask{0x20};
 int g_lifetimeState{};
 std::array<char, 48> g_combatantChannel{};
 float g_combatantValue{};
@@ -550,6 +553,58 @@ void draw_occupancy(const sdk::BoundView& view) noexcept {
     draw_result();
 }
 
+/**
+ * `.5` actor flags. The client applies only masked bits: 0/1 set AI targeting flags, 4 calls the
+ * entity interface at `+0x570` with bits 3 and 4, 5 calls `+0x588` with bit 5. Bit 5 shows the
+ * bottom-of-screen boss bar; value 0x08 under mask 0x18 hides the overhead combatant bar.
+ */
+void draw_combatant_flags(const sdk::BoundView& view) noexcept {
+    ImGui::SeparatorText("Actor flags (.5)");
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 6.0F);
+    ImGui::InputInt("Flags##combatant_flags",
+                    &g_combatantFlagValue,
+                    1,
+                    8,
+                    ImGuiInputTextFlags_CharsHexadecimal);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 6.0F);
+    ImGui::InputInt(
+        "Mask##combatant_flags", &g_combatantFlagMask, 1, 8, ImGuiInputTextFlags_CharsHexadecimal);
+    g_combatantFlagValue = (std::clamp)(g_combatantFlagValue, 0, 0x3F);
+    g_combatantFlagMask = (std::clamp)(g_combatantFlagMask, 0, 0x3F);
+    ImGui::SameLine();
+    const auto send = [&view](int value, int mask) noexcept {
+        remember("flags",
+                 devices::status_name(
+                     devices::set_combatant_flags(view,
+                                                  g_combatantRow,
+                                                  static_cast<std::uint8_t>(value & mask),
+                                                  static_cast<std::uint8_t>(mask))));
+    };
+    if (ImGui::Button("Send flags")) {
+        send(g_combatantFlagValue, g_combatantFlagMask);
+    }
+    struct Preset {
+        const char* label;
+        int value;
+        int mask;
+    };
+    static constexpr std::array<Preset, 3> kPresets{{
+        {"boss bar on", 0x20, 0x20},
+        {"boss bar off", 0x00, 0x20},
+        {"hide overhead", 0x08, 0x18},
+    }};
+    for (std::size_t index = 0; index < kPresets.size(); ++index) {
+        if (index != 0) {
+            ImGui::SameLine();
+        }
+        if (ImGui::SmallButton(kPresets[index].label)) {
+            send(kPresets[index].value, kPresets[index].mask);
+        }
+    }
+    ImGui::TextDisabled("Merged into the live actor's controls; its spawn and program carry on.");
+}
+
 /** Draws the combatant slots of the bound view. */
 void draw_combatants(const sdk::BoundView& view) noexcept {
     if (view.catalog == nullptr) {
@@ -591,6 +646,7 @@ void draw_combatants(const sdk::BoundView& view) noexcept {
                                  view, g_combatantRow, hash, g_combatantValue)));
     }
     ImGui::TextDisabled("The value is kept for the next attach or restore.");
+    draw_combatant_flags(view);
     draw_actor_sequences(view, g_combatantRow);
     draw_result();
 }

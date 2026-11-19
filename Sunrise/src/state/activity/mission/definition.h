@@ -235,6 +235,11 @@ enum class IntentKind : std::uint8_t {
     setObjectChannels,
     /** Sets a type-70 audience; the Host owns its revision and raises it only to clear. */
     setEngagement,
+    /**
+     * Merges a type-2 `.5` actor flag value/mask: `firstRow` is the combatant slot row,
+     * `actorCommandValue` the six-bit value and `entryIndex` the six-bit nonzero mask.
+     */
+    setCombatantFlags,
 };
 
 /** Actor sequence values belong to one combatant and one SDK/client generation. */

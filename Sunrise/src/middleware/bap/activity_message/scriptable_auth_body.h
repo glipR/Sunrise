@@ -28,6 +28,14 @@ inline constexpr std::uint32_t kType2SenseSchema = generated::C80807da2::kClass;
 inline constexpr std::uint32_t kType2Schema = generated::C80807da1::kClass;
 inline constexpr std::size_t kType2ChannelCapacity = 16;
 inline constexpr std::size_t kType2TemperamentCapacity = 6;
+/**
+ * `.5.1` / `.5.2`: a six-bit actor flag value and the mask of bits it applies (client `AB2D00`).
+ * Masked bits 0/1 set actor-record flags read by AI targeting; bit 4 calls the entity interface
+ * at `+0x570` with bits 3 and 4; bit 5 calls `+0x588` with bit 5.
+ * Seen in game: bit 5 set shows the bottom-of-screen boss bar and hides the overhead combatant bar;
+ * value 0x08 under mask 0x18 (bit 3 set, bit 4 clear) hides the overhead bar alone.
+ */
+inline constexpr std::uint8_t kType2ActorFlagBits = 0x3FU;
 /** Fixed bits around the variable 64-bit channel rows, with `.0` absent. */
 inline constexpr std::size_t kType2ChannelBaseBitCount = 149;
 inline constexpr std::size_t kType2ChannelRowBitCount = 64;
@@ -72,6 +80,10 @@ struct Type2ChannelState final {
     std::uint8_t temperamentCount{};
     std::uint8_t count{};
     Type2ActorBinding actorBinding{Type2ActorBinding::selfOwned};
+    /** `.5.1` actor flag values; only bits set in flagMask are meaningful. */
+    std::uint8_t flagValue{};
+    /** `.5.2` mask. The client applies only masked bits, so a zero mask changes nothing. */
+    std::uint8_t flagMask{};
 };
 
 /** Exact 55-bit ClientRef used by keyed combatant lanes. */
@@ -456,6 +468,13 @@ inline constexpr std::size_t kType34MaximumByteCount = (kType34MaximumBitCount +
 /** Inserts or replaces one named channel without discarding the other retained rows. */
 [[nodiscard]] bool
 set_type2_channel(Type2ChannelState& state, std::uint32_t nameHash, float value) noexcept;
+
+/**
+ * Merges actor flags into the controls: bits in mask take their value from value, and every bit
+ * masked earlier stays masked. Refuses bits outside the six-bit fields.
+ */
+[[nodiscard]] bool
+set_type2_actor_flags(Type2ChannelState& state, std::uint8_t value, std::uint8_t mask) noexcept;
 
 /** Selects one verified actor-ownership branch without changing retained actor controls. */
 [[nodiscard]] bool set_type2_actor_binding(Type2ChannelState& state,

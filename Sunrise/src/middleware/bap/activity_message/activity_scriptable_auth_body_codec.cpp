@@ -165,6 +165,7 @@ constexpr std::uint8_t kType2AtomFieldMaximum = 0x3F;
     if (state.revision == 0 || state.revision > kMaximumRevision
         || state.spawnGeneration > kMaximumRevision
         || !valid_type2_actor_binding(state.actorBinding) || state.count > state.channels.size()
+        || (state.flagMask & ~kType2ActorFlagBits) != 0 || (state.flagValue & ~state.flagMask) != 0
         || state.temperamentCount > state.temperaments.size()) {
         return false;
     }
@@ -230,8 +231,9 @@ constexpr std::uint8_t kType2AtomFieldMaximum = 0x3F;
         && (!spawned || writer.write(state.spawnGeneration, kType2SpawnRevisionBitCount))
         && writer.write(0, 2U) && writer.write(type2_actor_binding_wire(state.actorBinding), 3U)
         && writer.write(kEnabled, kBoolWidth) && writer.write(0, kBoolWidth)
-        && writer.write(1, kBoolWidth) && writer.write(state.revision, 31U) && writer.write(0, 6U)
-        && writer.write(0, 6U) && writer.write(state.temperamentCount, 3U);
+        && writer.write(1, kBoolWidth) && writer.write(state.revision, 31U)
+        && writer.write(state.flagValue, 6U) && writer.write(state.flagMask, 6U)
+        && writer.write(state.temperamentCount, 3U);
     for (std::size_t index = 0; encoded && index < state.temperamentCount; ++index) {
         encoded = writer.write(state.temperaments[index].value, kSigned32Width);
     }
@@ -386,6 +388,17 @@ bool next_type2_revision(const Type2ChannelState& state, std::uint32_t& next) no
     }
     next = state.revision + 1U;
     return next != 0;
+}
+
+/** Merges actor flags; bits masked earlier and outside the new mask keep their value. */
+bool set_type2_actor_flags(Type2ChannelState& state, std::uint8_t value, std::uint8_t mask) noexcept {
+    if ((value & ~kType2ActorFlagBits) != 0 || (mask & ~kType2ActorFlagBits) != 0) {
+        return false;
+    }
+    state.flagMask = static_cast<std::uint8_t>(state.flagMask | mask);
+    state.flagValue =
+        static_cast<std::uint8_t>(((state.flagValue & ~mask) | (value & mask)) & state.flagMask);
+    return true;
 }
 
 bool set_type2_actor_binding(Type2ChannelState& state, Type2ActorBinding binding) noexcept {
@@ -692,16 +705,18 @@ bool read_type2_controls(std::span<const std::byte> input,
         static_cast<Type2ActorBinding>(static_cast<std::int8_t>(layout.bindingWire) - 1);
     candidate.revision = layout.controlRevision;
     candidate.spawnGeneration = layout.spawnGeneration;
-    // The writer leaves the two six-bit fields zero; a body that sets them cannot be retained.
-    constexpr std::uint8_t kReservedBits = 6;
+    // `.5.1` flag value and `.5.2` mask; the writer never sets a value bit outside the mask.
+    constexpr std::uint8_t kFlagBits = 6;
     bits::Reader reader(input);
-    std::uint64_t first = 0, second = 0, count = 0, value = 0;
+    std::uint64_t flagValue = 0, flagMask = 0, count = 0, value = 0;
     bool decoded = valid_type2_actor_binding(candidate.actorBinding)
                    && reader.skip(layout.channelsOffset + auth_fields::kPresenceWidth
                                   + auth_fields::kCounterWidth)
-                   && reader.read(kReservedBits, first) && reader.read(kReservedBits, second)
-                   && first == 0 && second == 0 && reader.read(3, count)
+                   && reader.read(kFlagBits, flagValue) && reader.read(kFlagBits, flagMask)
+                   && (flagValue & ~flagMask) == 0 && reader.read(3, count)
                    && count == layout.temperamentCount;
+    candidate.flagValue = static_cast<std::uint8_t>(flagValue);
+    candidate.flagMask = static_cast<std::uint8_t>(flagMask);
     candidate.temperamentCount = static_cast<std::uint8_t>(count);
     for (std::size_t index = 0; decoded && index < candidate.temperamentCount; ++index) {
         decoded = reader.read(kSigned32Width, value);

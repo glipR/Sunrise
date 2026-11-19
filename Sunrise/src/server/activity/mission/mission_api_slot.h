@@ -554,6 +554,17 @@ inline constexpr ValueSpec kActorControlsArguments[]{
      .element = kActorChannel,
      .note = "one value per channel"},
 };
+// Type-2 `.5` actor flags. Bit 5 shows the boss bar; bits 0/1 are AI targeting flags.
+inline constexpr ValueSpec kActorFlagsArguments[]{
+    {.name = "value",
+     .kind = ValueKind::integer,
+     .bound = between(0, slot_auth::kType2ActorFlagBits),
+     .note = "six-bit flags; only bits in mask apply"},
+    {.name = "mask",
+     .kind = ValueKind::integer,
+     .bound = between(1, slot_auth::kType2ActorFlagBits),
+     .note = "bits the value applies; bits masked earlier keep their value"},
+};
 inline constexpr ValueSpec kPassengerSquad[]{{.kind = ValueKind::handle,
                                               .ref = "slot",
                                               .slot = exact_gate(slot_format::kSquadSlotType),
@@ -871,7 +882,17 @@ inline constexpr MemberSpec kSlotMembers[]{
      .arguments = kActorControlsArguments,
      .returns = kRequestKey,
      .effect = "slot.set_actor_controls",
-     .note = "replaces the live actor's whole control set and keeps its program"},
+     .note = "replaces the live actor's whole control set, actor flags included, and keeps its "
+             "program"},
+    {.name = "set_actor_flags",
+     .kind = MemberKind::request,
+     .call = CallForm::named,
+     .gate = kExactCombatant,
+     .arguments = kActorFlagsArguments,
+     .returns = kRequestKey,
+     .effect = "slot.set_actor_flags",
+     .note = "merges `.5` actor flags into the live actor's controls and keeps its program; "
+             "{value = 0x20, mask = 0x20} shows the boss bar, {value = 0, mask = 0x20} hides it"},
     {.name = "fire_trigger",
      .kind = MemberKind::request,
      .call = CallForm::named,

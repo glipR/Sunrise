@@ -317,6 +317,56 @@ Status set_combatant_channel(const sdk::BoundView& view,
                : Status::refused;
 }
 
+namespace {
+
+/** Shared body of both flag entry points; reservation is null for an operator action. */
+Status set_combatant_flags_impl(const sdk::BoundView& view,
+                                std::uint32_t slotRow,
+                                std::uint8_t value,
+                                std::uint8_t mask,
+                                const host::ScriptableOutputReservation* reservation) noexcept {
+    constexpr std::uint8_t kBits = auth::kType2ActorFlagBits;
+    if (mask == 0 || (mask & ~kBits) != 0 || (value & ~kBits) != 0) {
+        return Status::invalidValue;
+    }
+    PreparedDevice prepared{};
+    const Status status = prepare_combatant(view, slotRow, prepared);
+    if (status != Status::ready) {
+        return status;
+    }
+    if (!prepared.target.stateLocalRoster) {
+        return Status::targetUnavailable;
+    }
+    return host::request_state_local_type2_flags_override(view.binding,
+                                                          prepared.target,
+                                                          prepared.generatedRosterGroup,
+                                                          value,
+                                                          mask,
+                                                          prepared.activityClientGeneration,
+                                                          reservation)
+               ? Status::queued
+               : Status::refused;
+}
+
+} // namespace
+
+/** Merges a `.5` actor flag value/mask for an operator action, which owns no revision. */
+Status set_combatant_flags(const sdk::BoundView& view,
+                           std::uint32_t slotRow,
+                           std::uint8_t value,
+                           std::uint8_t mask) noexcept {
+    return set_combatant_flags_impl(view, slotRow, value, mask, nullptr);
+}
+
+/** Merges a `.5` actor flag value/mask on a mission intent's reserved revision. */
+Status set_combatant_flags_reserved(const sdk::BoundView& view,
+                                    std::uint32_t slotRow,
+                                    std::uint8_t value,
+                                    std::uint8_t mask,
+                                    const host::ScriptableOutputReservation& reservation) noexcept {
+    return set_combatant_flags_impl(view, slotRow, value, mask, &reservation);
+}
+
 /** Plays a sequence only through the current client's exact generated combatant route. */
 Status play_combatant_sequence(const sdk::BoundView& view,
                                std::uint32_t slotRow,

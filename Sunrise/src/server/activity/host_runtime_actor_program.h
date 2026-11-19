@@ -143,17 +143,38 @@ retained(const detail::Instance& instance, const ScriptableTarget& target) noexc
     if (previous == nullptr) {
         return false;
     }
+    const std::span<const std::byte> previousBody =
+        std::span(previous->body).first(previous->byteCount);
+    std::span<const std::byte> controls = std::span(request.authBody).first(request.authByteCount);
+    std::size_t controlsBits = request.authBitCount;
+    // A flag merge carries no body: it rebuilds `.5` from the live actor's controls (none when
+    // it has no `.5` yet) with the flags merged in, so temperaments, channels and earlier flags
+    // stay as they are. The revision written is still the retained one plus one.
+    std::array<std::byte, auth::kType2MaximumBodyByteCount> merged{};
+    if (request.actorFlagMask != 0) {
+        auth::Type2ChannelState state{};
+        if (!auth::read_type2_controls(previousBody, previous->bitCount, state)) {
+            state = {};
+        }
+        state.revision = 1;
+        state.spawnGeneration = 0;
+        std::size_t mergedBytes = 0;
+        if (!auth::set_type2_actor_flags(state, request.actorFlagValue, request.actorFlagMask)
+            || !auth::encode_type2_channels(state, merged, mergedBytes, controlsBits)) {
+            return false;
+        }
+        controls = std::span<const std::byte>(merged).first(mergedBytes);
+    }
     std::size_t bits = 0;
     std::uint32_t revision = 0;
-    const bool encoded =
-        auth::replace_type2_controls(std::span(previous->body).first(previous->byteCount),
-                                     previous->bitCount,
-                                     std::span(request.authBody).first(request.authByteCount),
-                                     request.authBitCount,
-                                     pending.body,
-                                     written,
-                                     bits,
-                                     revision);
+    const bool encoded = auth::replace_type2_controls(previousBody,
+                                                      previous->bitCount,
+                                                      controls,
+                                                      controlsBits,
+                                                      pending.body,
+                                                      written,
+                                                      bits,
+                                                      revision);
     pending.bitCount = static_cast<std::uint16_t>(bits);
     pending.generation = revision;
     return encoded;

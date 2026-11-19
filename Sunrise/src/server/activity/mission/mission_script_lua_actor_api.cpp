@@ -23,6 +23,7 @@ constexpr const api::MemberSpec& kRetireActor = api::slot_member("retire_actor")
 constexpr const api::MemberSpec& kDeliverPassengers = api::slot_member("deliver_passengers");
 constexpr const api::MemberSpec& kBindCombatant = api::slot_member("bind_combatant_to_squad");
 constexpr const api::MemberSpec& kRunAtoms = api::slot_member("run_atoms");
+constexpr const api::MemberSpec& kActorFlags = api::slot_member("set_actor_flags");
 
 /** Native state replaces the template counters before publishing an actor program. */
 [[nodiscard]] int queue_actor_template(lua_State* state,
@@ -239,6 +240,36 @@ std::size_t authored_point_count(lua_State* state, const SlotDefinition& slot) {
     intent.active = optional_boolean_argument(state, boolean_option(kBindCombatant, "spawn"));
     intent.squadRetireOnReturn =
         optional_boolean_argument(state, boolean_option(kBindCombatant, "retire_on_return"));
+    return queue_intent(state, frame, intent);
+}
+
+/**
+ * Merges a `.5` actor flag value/mask into one exact combatant's actor-control block.
+ * @param state Lua call holding the slot and {value, mask}.
+ * @return One request handle after the intent is retained.
+ */
+[[nodiscard]] int slot_set_actor_flags(lua_State* state) {
+    const auto* const handle =
+        static_cast<const SlotHandle*>(luaL_checkudata(state, 1, kSlotMetatable));
+    refuse_unknown_arguments(state, kActorFlags);
+    SlotDefinition definition{};
+    if (!current_slot(state, *handle, definition) || !exact_combatant_slot(definition)) {
+        return luaL_error(state, "activity slot is not an exact type-2 combatant");
+    }
+    const lua_Integer value = checked_integer_argument(
+        state, required_key(kActorFlags, "value", api::ValueKind::integer));
+    const lua_Integer mask = checked_integer_argument(
+        state, required_key(kActorFlags, "mask", api::ValueKind::integer));
+    if (value < 0 || value > scriptable_auth::kType2ActorFlagBits || mask < 1
+        || mask > scriptable_auth::kType2ActorFlagBits) {
+        return luaL_error(state, "actor flags are six-bit fields and the mask must be nonzero");
+    }
+    CallFrame& frame = active_frame(state);
+    Intent intent{};
+    intent.kind = IntentKind::setCombatantFlags;
+    intent.firstRow = definition.nativeRow;
+    intent.actorCommandValue = static_cast<std::int32_t>(value);
+    intent.entryIndex = static_cast<std::int32_t>(mask);
     return queue_intent(state, frame, intent);
 }
 

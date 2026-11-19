@@ -74,6 +74,12 @@ struct ScriptableRequest final {
     float value{};
     std::uint32_t channelHash{};
     std::int32_t entryIndex{};
+    /**
+     * combatantControls with no transported body: a `.5` flag merge into the retained controls.
+     * A nonzero mask marks the request as one; actorFlagValue holds the bits it applies.
+     */
+    std::uint8_t actorFlagValue{};
+    std::uint8_t actorFlagMask{};
     middleware::bap::activity_message::squad_auth::Mode squadMode{
         middleware::bap::activity_message::squad_auth::Mode::mode0};
     ScriptableOverrideKind kind{ScriptableOverrideKind::type23};

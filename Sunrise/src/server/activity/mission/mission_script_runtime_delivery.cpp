@@ -442,6 +442,9 @@ void complete_delivery(RuntimeInstance& instance) noexcept {
     case lua_vm::IntentKind::bindCombatantToSquad:
         result = "combatant_binding_staged";
         break;
+    case lua_vm::IntentKind::setCombatantFlags:
+        result = "actor_flags_staged";
+        break;
     case lua_vm::IntentKind::stopAuthoredScene:
         result = "scene_stop_staged";
         break;

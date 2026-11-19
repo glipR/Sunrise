@@ -356,6 +356,7 @@ constexpr std::array<SlotBinding, std::size(api::kSlotMembers)> kSlotBindings{{
     {"bind_combatant_to_squad", &slot_bind_combatant_to_squad},
     {"run_atoms", &slot_run_atoms},
     {"set_actor_controls", &slot_set_actor_controls},
+    {"set_actor_flags", &slot_set_actor_flags},
     {"fire_trigger", &slot_fire_trigger},
     {"disarm_trigger", &slot_disarm_trigger},
     {"play_sequence", &slot_play_actor_sequence, nullptr, &exact_combatant_slot},

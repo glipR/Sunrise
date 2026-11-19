@@ -89,6 +89,24 @@ run_actor_program_reserved(const state::activity_sdk::BoundView& view,
                                            std::uint32_t channelHash,
                                            float value) noexcept;
 
+/**
+ * Merges a `.5` actor flag value/mask into the combatant's retained actor-control block.
+ * @param value Six-bit flag values; only bits in mask are sent as meaningful.
+ * @param mask Six-bit mask, nonzero. Earlier masked bits stay asserted.
+ */
+[[nodiscard]] Status set_combatant_flags(const state::activity_sdk::BoundView& view,
+                                         std::uint32_t slotRow,
+                                         std::uint8_t value,
+                                         std::uint8_t mask) noexcept;
+
+/** Mission form of set_combatant_flags, on the intent's reserved Host revision. */
+[[nodiscard]] Status
+set_combatant_flags_reserved(const state::activity_sdk::BoundView& view,
+                             std::uint32_t slotRow,
+                             std::uint8_t value,
+                             std::uint8_t mask,
+                             const host::ScriptableOutputReservation& reservation) noexcept;
+
 /** Plays an extracted actor-owned sequence while preserving the combatant's Auth state. */
 [[nodiscard]] Status play_combatant_sequence(const state::activity_sdk::BoundView& view,
                                              std::uint32_t slotRow,

@@ -292,6 +292,32 @@ bool request_state_local_type2_channel_override(
     return enqueue_request(request, reservation);
 }
 
+/** Queues one `.5` actor flag merge; the reducer reads the live controls and owns the revision. */
+bool request_state_local_type2_flags_override(
+    const state::activity::SessionBinding& binding,
+    const ScriptableTarget& target,
+    const state::build_data::scenarios::RosterGroup& stateLocalRosterGroup,
+    std::uint8_t flagValue,
+    std::uint8_t flagMask,
+    std::uint64_t expectedActivityClientGeneration,
+    const ScriptableOutputReservation* reservation) noexcept {
+    constexpr std::uint8_t kBits = auth::kType2ActorFlagBits;
+    if (target.slotType != auth::kType2SlotType || target.authSchema != auth::kType2Schema
+        || !valid_state_local_group(target, stateLocalRosterGroup) || (flagValue & ~kBits) != 0
+        || (flagMask & ~kBits) != 0 || flagMask == 0 || expectedActivityClientGeneration == 0) {
+        return false;
+    }
+    ScriptableRequest request{};
+    request.binding = binding;
+    request.target = target;
+    request.stateLocalRosterGroup = stateLocalRosterGroup;
+    request.actorFlagValue = flagValue;
+    request.actorFlagMask = flagMask;
+    request.expectedActivityClientGeneration = expectedActivityClientGeneration;
+    request.kind = ScriptableOverrideKind::combatantControls;
+    return enqueue_request(request, reservation);
+}
+
 /** Queues only a sequence hash; the reducer owns the atom generation and retained body. */
 bool request_state_local_type2_sequence(
     const state::activity::SessionBinding& binding,

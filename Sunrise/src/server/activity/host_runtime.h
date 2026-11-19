@@ -1297,6 +1297,20 @@ request_type23_override(const state::activity::SessionBinding& binding,
     std::uint64_t expectedActivityClientGeneration,
     const ScriptableOutputReservation* reservation = nullptr) noexcept;
 
+/**
+ * Queues one `.5` actor flag value/mask merge from an exact generated type-2 slot. It rides the
+ * combatantControls path: the Host merges the flags into the live actor's retained controls and
+ * writes them under the next control revision, keeping the spawn and any running program.
+ */
+[[nodiscard]] bool request_state_local_type2_flags_override(
+    const state::activity::SessionBinding& binding,
+    const ScriptableTarget& target,
+    const state::build_data::scenarios::RosterGroup& stateLocalRosterGroup,
+    std::uint8_t flagValue,
+    std::uint8_t flagMask,
+    std::uint64_t expectedActivityClientGeneration,
+    const ScriptableOutputReservation* reservation = nullptr) noexcept;
+
 /** Existing active sources cannot be silently repurposed by a named-actor creation. */
 enum class ActorProgramSourceStatus : std::uint8_t { missing, ready, incompatible };
 

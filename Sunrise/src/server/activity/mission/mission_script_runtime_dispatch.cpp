@@ -878,6 +878,30 @@ void dispatch_intent(RuntimeInstance& instance, std::uint64_t now) noexcept {
                         carrier);
         return;
     }
+    case lua_vm::IntentKind::setCombatantFlags: {
+        host::ScriptableOutputReservation reservation{};
+        if (!reserve_or_refuse(instance, reservation, "actor_flags_refused")) {
+            return;
+        }
+        std::uint64_t carrier = 0;
+        const devices::Status status = deliver_through_holder(
+            instance, intent, kDeviceWalk, carrier, [&](const sdk::BoundView& view) noexcept {
+                return devices::set_combatant_flags_reserved(
+                    view,
+                    intent.firstRow,
+                    static_cast<std::uint8_t>(intent.actorCommandValue),
+                    static_cast<std::uint8_t>(intent.entryIndex),
+                    reservation);
+            });
+        finish_reserved(instance,
+                        now,
+                        reservation,
+                        status,
+                        "actor_flags_enqueued",
+                        "actor_flags_refused",
+                        carrier);
+        return;
+    }
     case lua_vm::IntentKind::setObjectActive: {
         host::ScriptableOutputReservation reservation{};
         if (!reserve_or_refuse(instance, reservation, "object_refused")) {
